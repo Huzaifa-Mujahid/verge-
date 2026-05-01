@@ -44,6 +44,16 @@ const ProjectModal = ({ formData, setFormData, clients, saving, formError, onSav
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
+              <label className="label">Sales Agent Name</label>
+              <input className="input" value={formData.sales_agent || ''} onChange={e => setFormData(f => ({ ...f, sales_agent: e.target.value }))} placeholder="Agent name…" />
+            </div>
+            <div>
+              <label className="label">Closer Name</label>
+              <input className="input" value={formData.closer || ''} onChange={e => setFormData(f => ({ ...f, closer: e.target.value }))} placeholder="Closer name…" />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
               <label className="label">Budget ($)</label>
               <input className="input" type="number" min="0" step="0.01" value={formData.budget} onChange={e => setFormData(f => ({ ...f, budget: e.target.value }))} placeholder="0.00" />
             </div>
@@ -57,11 +67,11 @@ const ProjectModal = ({ formData, setFormData, clients, saving, formError, onSav
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label className="label">Start Date</label>
-              <input className="input" type="date" value={formData.start_date} onChange={e => setFormData(f => ({ ...f, start_date: e.target.value }))} />
+              <input className="input" type="date" value={formData.start_date} onChange={e => setFormData(f => ({ ...f, start_date: e.target.value }))} onClick={(e) => e.target.showPicker?.()} />
             </div>
             <div>
               <label className="label">Deadline</label>
-              <input className="input" type="date" value={formData.end_date} onChange={e => setFormData(f => ({ ...f, end_date: e.target.value }))} />
+              <input className="input" type="date" value={formData.end_date} onChange={e => setFormData(f => ({ ...f, end_date: e.target.value }))} onClick={(e) => e.target.showPicker?.()} />
             </div>
           </div>
         </form>
@@ -108,7 +118,7 @@ const Projects = () => {
   };
 
   const openAdd = () => { setFormData(EMPTY_FORM); setFormError(null); setIsEdit(false); setShowModal(true); };
-  const openEdit = (p) => { setFormData({ id: p.id, client_id: p.client_id, title: p.title, description: p.description || '', budget: p.budget || '', status: p.status, start_date: p.start_date?.slice(0, 10) || '', end_date: p.end_date?.slice(0, 10) || '' }); setFormError(null); setIsEdit(true); setShowModal(true); };
+  const openEdit = (p) => { setFormData({ id: p.id, client_id: p.client_id, title: p.title, description: p.description || '', budget: p.budget || '', status: p.status, start_date: p.start_date?.slice(0, 10) || '', end_date: p.end_date?.slice(0, 10) || '', sales_agent: p.sales_agent || '', closer: p.closer || '' }); setFormError(null); setIsEdit(true); setShowModal(true); };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -116,7 +126,7 @@ const Projects = () => {
     if (!formData.title) { setFormError('Project title is required.'); return; }
     setSaving(true); setFormError(null);
     try {
-      const payload = { client_id: formData.client_id, title: formData.title, description: formData.description, budget: parseFloat(formData.budget) || 0, status: formData.status, start_date: formData.start_date || null, end_date: formData.end_date || null };
+      const payload = { client_id: formData.client_id, title: formData.title, description: formData.description, budget: parseFloat(formData.budget) || 0, status: formData.status, start_date: formData.start_date || null, end_date: formData.end_date || null, sales_agent: formData.sales_agent || null, closer: formData.closer || null };
       if (isEdit) { const { error } = await supabase.from('projects').update(payload).eq('id', formData.id); if (error) throw error; }
       else { const { error } = await supabase.from('projects').insert([payload]); if (error) throw error; }
       setShowModal(false); fetchData();

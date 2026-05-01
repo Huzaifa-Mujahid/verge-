@@ -45,10 +45,11 @@ const AddClientModal = ({ onClose, onSaved }) => {
           <form id="add-client-form" onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div><label className="label">Full Name *</label><input className="input" value={form.full_name} onChange={e => up('full_name', e.target.value)} placeholder="John Smith" required /></div>
             <div><label className="label">Email *</label><input className="input" type="email" value={form.email} onChange={e => up('email', e.target.value)} placeholder="john@company.com" required /></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: grid, gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><label className="label">Phone</label><input className="input" value={form.phone} onChange={e => up('phone', e.target.value)} placeholder="+1 (555) 000-0000" /></div>
               <div><label className="label">Company</label><input className="input" value={form.company} onChange={e => up('company', e.target.value)} placeholder="Acme Inc." /></div>
             </div>
+            <div><label className="label">Business Address</label><input className="input" value={form.address || ''} onChange={e => up('address', e.target.value)} placeholder="123 Business St, Suite 100" /></div>
             <div>
               <label className="label">Status</label>
               <select className="input" value={form.status} onChange={e => up('status', e.target.value)}>
@@ -103,7 +104,6 @@ const Clients = () => {
           <p className="page-subtitle">{clients.length} client{clients.length !== 1 ? 's' : ''} in your database</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary"><Download size={15} />Export</button>
           <button className="btn btn-primary" onClick={() => setShowModal(true)}><Plus size={15} />Add Client</button>
         </div>
       </div>

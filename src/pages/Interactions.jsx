@@ -44,7 +44,7 @@ const InteractionModal = ({ form, setForm, clients, saving, err, onSave, onClose
           </div>
           <div>
             <label className="label">Follow-up Date</label>
-            <input className="input" type="date" value={form.follow_up_date} onChange={e => setForm(f => ({ ...f, follow_up_date: e.target.value }))} />
+            <input className="input" type="date" value={form.follow_up_date} onChange={e => setForm(f => ({ ...f, follow_up_date: e.target.value }))} onClick={(e) => e.target.showPicker?.()} />
           </div>
         </form>
       </div>
@@ -88,7 +88,14 @@ const Interactions = () => {
     if (!form.client_id || !form.notes) { setFormErr('Client and notes are required.'); return; }
     setSaving(true); setFormErr(null);
     try {
-      const { error } = await supabase.from('interactions').insert([{ client_id: form.client_id, type: form.type, notes: form.notes, follow_up_date: form.follow_up_date || null }]);
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from('interactions').insert([{ 
+        client_id: form.client_id, 
+        type: form.type, 
+        notes: form.notes, 
+        follow_up_date: form.follow_up_date || null,
+        created_by: user?.id
+      }]);
       if (error) throw error;
       setShowModal(false); fetchData();
     } catch (e) { setFormErr(e.message); } finally { setSaving(false); }

@@ -28,9 +28,18 @@ const PaymentModal = ({ form, setForm, projects, saving, err, onSave, onClose })
               <input className="input" type="number" step="0.01" min="0" required value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" />
             </div>
             <div>
-              <label className="label">Due Date</label>
-              <input className="input" type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+              <label className="label">Payment Type</label>
+              <select className="input" value={form.payment_type || 'One-time'} onChange={e => setForm(f => ({ ...f, payment_type: e.target.value }))}>
+                <option value="One-time">One-time</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Setup Fee">Setup Fee</option>
+              </select>
             </div>
+          </div>
+          <div>
+            <label className="label">Due Date</label>
+            <input className="input" type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
           </div>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 14, background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer', marginTop: 8 }}>
             <input type="checkbox" checked={form.is_paid} onChange={e => setForm(f => ({ ...f, is_paid: e.target.checked }))} style={{ marginTop: 2, width: 16, height: 16 }} />
@@ -44,7 +53,7 @@ const PaymentModal = ({ form, setForm, projects, saving, err, onSave, onClose })
       <div className="modal-footer">
         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" form="pay-form" type="submit" disabled={saving}>
-          {saving ? <><Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Saving…</> : 'Log Payment'}
+          {saving ? <><Loader2 size={14} style={{ animation: 'spin 0.7s linear infinite' }} /> Saving…</> : form.id ? 'Update Payment' : 'Log Payment'}
         </button>
       </div>
     </motion.div>
@@ -97,9 +106,23 @@ const Payments = () => {
     if (!form.project_id || !form.amount) { setFormErr('Project and amount are required.'); return; }
     setSaving(true); setFormErr(null);
     try {
-      const payload = { project_id: form.project_id, amount: parseFloat(form.amount), due_date: form.due_date || null, is_paid: form.is_paid, payment_date: form.is_paid ? new Date().toISOString() : null };
-      const { error } = await supabase.from('payments').insert([payload]);
-      if (error) throw error;
+      const payload = { 
+        project_id: form.project_id, 
+        amount: parseFloat(form.amount), 
+        due_date: form.due_date || null, 
+        is_paid: form.is_paid, 
+        payment_type: form.payment_type || 'One-time',
+        payment_date: form.is_paid ? (form.payment_date || new Date().toISOString()) : null 
+      };
+
+      let res;
+      if (form.id) {
+        res = await supabase.from('payments').update(payload).eq('id', form.id);
+      } else {
+        res = await supabase.from('payments').insert([payload]);
+      }
+
+      if (res.error) throw res.error;
       setShowModal(false); fetchData();
     } catch (e) { setFormErr(e.message); } finally { setSaving(false); }
   };
@@ -113,6 +136,7 @@ const Payments = () => {
   };
 
   const openAdd = () => { setForm(EMPTY_FORM); setFormErr(null); setShowModal(true); };
+  const openEdit = (p) => { setForm(p); setFormErr(null); setShowModal(true); };
 
   return (
     <div className="animate-in" style={{ paddingBottom: 40 }}>
@@ -176,13 +200,16 @@ const Payments = () => {
                         {p.is_paid ? '✓ Paid' : p.is_overdue ? 'Overdue' : 'Pending'}
                       </span>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button className="btn btn-ghost btn-icon" onClick={() => openEdit(p)}>
+                        <ArrowUpRight size={15} />
+                      </button>
                       {!p.is_paid ? (
                         <button className="btn btn-sm" style={{ background: 'var(--emerald-glow)', color: 'var(--emerald)', border: '1px solid rgba(16,185,129,0.2)' }} onClick={e => markAsPaid(p, e)}>
                           Mark Paid
                         </button>
                       ) : (
-                        <CheckCircle2 size={18} style={{ color: 'var(--emerald)', opacity: 0.5, display: 'inline-block', marginRight: 8 }} />
+                        <CheckCircle2 size={18} style={{ color: 'var(--emerald)', opacity: 0.5, display: 'inline-block' }} />
                       )}
                     </td>
                   </tr>

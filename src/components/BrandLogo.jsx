@@ -6,9 +6,9 @@ const BrandLogo = ({ size = 'md', className = '' }) => {
   return (
     <div className={`flex items-center ${className}`}>
       <img 
-        src="/logo.png?v=2" 
+        src="/logo.png?v=4" 
         className={`${isLarge ? 'h-20' : 'h-14'} w-auto object-contain`} 
-        alt="Digital Orbit Solutions Logo" 
+        alt="Allied Marketing Solutions" 
       />
     </div>
   );

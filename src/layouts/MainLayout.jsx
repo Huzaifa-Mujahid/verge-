@@ -93,9 +93,9 @@ const Sidebar = ({ open, onClose }) => {
         `}
       >
         {/* Logo */}
-        <div style={{ padding: '24px 16px', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
+        <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-            <img src="/logo.png" alt="Company Logo" style={{ width: '100%', maxWidth: 180, height: 'auto', objectFit: 'contain', margin: '0 auto' }} />
+            <img src="/logo.png?v=4" alt="Allied Marketing Solutions Logo" style={{ width: '100%', maxWidth: 180, height: 'auto', objectFit: 'contain', margin: '0 auto' }} />
           </div>
         </div>
 
@@ -194,7 +194,7 @@ const MainLayout = ({ children }) => {
           className="md:hidden"
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #fff, #a5b4fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Digital Orbit Solutions</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #fff, #a5b4fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Allied Marketing Solutions</span>
           </div>
           <div style={{ width: 28 }} /> {/* spacer */}
         </header>
