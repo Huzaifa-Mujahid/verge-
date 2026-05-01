@@ -188,6 +188,12 @@ const ClientDetail = () => {
 
             {activeTab === 'projects' && (
               <div className="card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Client Projects</h3>
+                  <button className="btn btn-primary btn-sm" onClick={() => navigate('/projects', { state: { preselectClientId: id } })}>
+                    <Briefcase size={14} /> New Project
+                  </button>
+                </div>
                 {data.projects.length === 0 ? (
                   <div className="empty-state">
                     <div className="empty-icon"><Briefcase size={22} /></div>
@@ -214,6 +220,12 @@ const ClientDetail = () => {
 
             {activeTab === 'interactions' && (
               <div className="card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Communication History</h3>
+                  <button className="btn btn-primary btn-sm" onClick={() => navigate('/interactions', { state: { preselectClientId: id } })}>
+                    <MessageSquare size={14} /> Log Interaction
+                  </button>
+                </div>
                 {data.interactions.length === 0 ? (
                   <div className="empty-state">
                     <div className="empty-icon"><MessageSquare size={22} /></div>

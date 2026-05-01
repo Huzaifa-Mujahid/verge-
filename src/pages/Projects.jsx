@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Filter, LayoutGrid, Table as TableIcon, X, Loader2, Calendar, DollarSign, ChevronRight, Briefcase } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 const STATUS_STYLES = {
@@ -91,6 +92,7 @@ const ProjectModal = ({ formData, setFormData, clients, saving, formError, onSav
 
 /* ── Projects Page ─────────────────────────────────────────────── */
 const Projects = () => {
+  const location = useLocation();
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +104,14 @@ const Projects = () => {
   const [formError, setFormError] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { 
+    fetchData(); 
+    if (location.state?.preselectClientId) {
+      setFormData(f => ({ ...f, client_id: location.state.preselectClientId }));
+      setIsEdit(false);
+      setShowModal(true);
+    }
+  }, [location.state]);
 
   const fetchData = async () => {
     setLoading(true);

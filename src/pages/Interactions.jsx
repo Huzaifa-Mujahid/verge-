@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Filter, MessageSquare, Mail, Phone, Users, FileText, Clock, AlertCircle, X, Loader2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 const TYPES = ['Call', 'Email', 'Meeting', 'Note'];
@@ -59,6 +60,7 @@ const InteractionModal = ({ form, setForm, clients, saving, err, onSave, onClose
 );
 
 const Interactions = () => {
+  const location = useLocation();
   const [interactions, setInteractions] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,13 @@ const Interactions = () => {
   const [formErr, setFormErr] = useState(null);
   const [form, setForm] = useState({ client_id: '', type: 'Call', notes: '', follow_up_date: '' });
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { 
+    fetchData(); 
+    if (location.state?.preselectClientId) {
+      setForm(f => ({ ...f, client_id: location.state.preselectClientId }));
+      setShowModal(true);
+    }
+  }, [location.state]);
 
   const fetchData = async () => {
     setLoading(true);
