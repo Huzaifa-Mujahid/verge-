@@ -45,7 +45,7 @@ const AddClientModal = ({ onClose, onSaved }) => {
           <form id="add-client-form" onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div><label className="label">Full Name *</label><input className="input" value={form.full_name} onChange={e => up('full_name', e.target.value)} placeholder="John Smith" required /></div>
             <div><label className="label">Email *</label><input className="input" type="email" value={form.email} onChange={e => up('email', e.target.value)} placeholder="john@company.com" required /></div>
-            <div style={{ display: grid, gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><label className="label">Phone</label><input className="input" value={form.phone} onChange={e => up('phone', e.target.value)} placeholder="+1 (555) 000-0000" /></div>
               <div><label className="label">Company</label><input className="input" value={form.company} onChange={e => up('company', e.target.value)} placeholder="Acme Inc." /></div>
             </div>
