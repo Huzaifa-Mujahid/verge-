@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 const EMPTY_FORM = { project_id: '', amount: '', due_date: '', is_paid: false };
 
 const PaymentModal = ({ form, setForm, projects, saving, err, onSave, onClose }) => (
-  <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+  <div className="modal-overlay">
     <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }} className="modal-box">
       <div className="modal-header">
         <span className="modal-title">Log Payment</span>
@@ -39,7 +39,7 @@ const PaymentModal = ({ form, setForm, projects, saving, err, onSave, onClose })
           </div>
           <div>
             <label className="label">Due Date</label>
-            <input className="input" type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+            <input className="input" type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} onClick={(e) => e.target.showPicker?.()} />
           </div>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 14, background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer', marginTop: 8 }}>
             <input type="checkbox" checked={form.is_paid} onChange={e => setForm(f => ({ ...f, is_paid: e.target.checked }))} style={{ marginTop: 2, width: 16, height: 16 }} />

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Calendar, Clock, MapPin, Video, CheckCircle2, X, Loader2, Edit3, Trash2 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 const EMPTY = { id: null, client_id: '', title: '', description: '', scheduled_at: '', duration_minutes: 30, location: '', is_completed: false };
 
 const MeetingModal = ({ form, setForm, clients, saving, err, onSave, onClose }) => (
-  <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+  <div className="modal-overlay">
     <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }} className="modal-box">
       <div className="modal-header">
         <span className="modal-title">{form.id ? 'Edit Meeting' : 'Schedule Meeting'}</span>
@@ -41,7 +42,7 @@ const MeetingModal = ({ form, setForm, clients, saving, err, onSave, onClose }) 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label className="label">Date & Time *</label>
-              <input className="input" type="datetime-local" required value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
+              <input className="input" type="datetime-local" required value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} onClick={(e) => e.target.showPicker?.()} />
             </div>
             <div>
               <label className="label">Location</label>
@@ -80,7 +81,20 @@ const Meetings = () => {
   const [formErr, setFormErr] = useState(null);
   const [form, setForm] = useState(EMPTY);
 
-  useEffect(() => { fetchData(); }, []);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    fetchData();
+
+    // Handle Quick Action
+    const params = new URLSearchParams(location.search);
+    if (params.get('new') === 'true') {
+      openAdd();
+      // Clear the param from URL
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search]);
 
   const fetchData = async () => {
     setLoading(true);

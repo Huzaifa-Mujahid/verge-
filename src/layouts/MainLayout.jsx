@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  CheckSquare,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -20,23 +21,25 @@ const NAV = [
   {
     group: 'Workspace',
     items: [
-      { label: 'Dashboard',    path: '/',              icon: LayoutDashboard },
-      { label: 'Clients',      path: '/clients',       icon: Users },
-      { label: 'Projects',     path: '/projects',      icon: Briefcase },
+      { label: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['Admin', 'Manager', 'Customer Success Manager', 'Sales Agent', 'Sales Closer', 'Employee'] },
+      { label: 'Clients', path: '/clients', icon: Users, roles: ['Admin', 'Manager', 'Customer Success Manager', 'Sales Agent', 'Sales Closer'] },
+      { label: 'Projects', path: '/projects', icon: Briefcase, roles: ['Admin', 'Manager', 'Customer Success Manager', 'Sales Agent', 'Sales Closer'] },
+      { label: 'Tasks', path: '/tasks', icon: CheckSquare, roles: ['Admin', 'Manager', 'Customer Success Manager', 'Sales Agent', 'Sales Closer', 'Employee'] },
+      { label: 'Staff', path: '/staff', icon: Users, roles: ['Admin', 'Manager'] },
     ],
   },
   {
     group: 'Activity',
     items: [
-      { label: 'Meetings',     path: '/meetings',      icon: Calendar },
-      { label: 'Interactions', path: '/interactions',  icon: MessageSquare },
-      { label: 'Payments',     path: '/payments',      icon: CreditCard },
+      { label: 'Meetings', path: '/meetings', icon: Calendar, roles: ['Admin', 'Manager', 'Customer Success Manager', 'Sales Agent', 'Sales Closer'] },
+      { label: 'Interactions', path: '/interactions', icon: MessageSquare, roles: ['Admin', 'Manager', 'Customer Success Manager', 'Sales Agent', 'Sales Closer'] },
+      { label: 'Payments', path: '/payments', icon: CreditCard, roles: ['Admin', 'Manager'] },
     ],
   },
   {
     group: 'Analytics',
     items: [
-      { label: 'Reports',      path: '/reports',       icon: BarChart3 },
+      { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['Admin', 'Manager'] },
     ],
   },
 ];
@@ -47,7 +50,7 @@ const avatarColor = (email) => AVATAR_COLORS[(email?.charCodeAt(0) ?? 0) % AVATA
 
 /* ── Sidebar Component ─────────────────────────────────────────── */
 const Sidebar = ({ open, onClose }) => {
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -60,6 +63,7 @@ const Sidebar = ({ open, onClose }) => {
   const colorClass = avatarColor(user?.email);
   const displayEmail = user?.email || '';
   const displayName = fullName || displayEmail;
+  const displayRole = role || 'Employee';
 
   return (
     <>
@@ -101,23 +105,47 @@ const Sidebar = ({ open, onClose }) => {
 
         {/* Navigation */}
         <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
-          {NAV.map(({ group, items }) => (
-            <div key={group}>
-              <p className="nav-group-label">{group}</p>
-              {items.map(({ label, path, icon: Icon }) => (
-                <NavLink
-                  key={path}
-                  to={path}
-                  end={path === '/'}
-                  onClick={onClose}
-                  className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                >
-                  <Icon size={15} className="nav-icon" style={{ flexShrink: 0 }} />
-                  <span>{label}</span>
-                </NavLink>
-              ))}
+          {NAV.map(({ group, items }) => {
+            const filteredItems = items.filter(i => !i.roles || i.roles.includes(displayRole));
+            if (filteredItems.length === 0) return null;
+
+            return (
+              <div key={group}>
+                <p className="nav-group-label">{group}</p>
+                {filteredItems.map(({ label, path, icon: Icon }) => (
+                  <NavLink
+                    key={path}
+                    to={path}
+                    end={path === '/'}
+                    onClick={onClose}
+                    className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                  >
+                    <Icon size={15} className="nav-icon" style={{ flexShrink: 0 }} />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            );
+          })}
+
+          {/* Quick Actions for Staff/Admin */}
+          <div style={{ marginTop: 24, padding: '0 10px' }}>
+            <p className="nav-group-label" style={{ marginBottom: 12 }}>Quick Actions</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <NavLink to="/clients?new=true" className="quick-action-btn">
+                <Users size={14} />
+                <span>+ Add Client</span>
+              </NavLink>
+              <NavLink to="/tasks?new=true" className="quick-action-btn">
+                <CheckSquare size={14} />
+                <span>+ New Task</span>
+              </NavLink>
+              <NavLink to="/meetings?new=true" className="quick-action-btn">
+                <Calendar size={14} />
+                <span>+ Schedule Meeting</span>
+              </NavLink>
             </div>
-          ))}
+          </div>
         </nav>
 
         {/* User footer */}
@@ -140,7 +168,7 @@ const Sidebar = ({ open, onClose }) => {
               }}>
                 {displayName}
               </p>
-              <p style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>Administrator</p>
+              <p style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>{displayRole}</p>
             </div>
             <button
               onClick={handleLogout}

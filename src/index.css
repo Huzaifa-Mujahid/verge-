@@ -181,6 +181,36 @@ body {
 }
 .input-icon { padding-left: 40px; }
 
+/* Quick Actions Sidebar Buttons */
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.quick-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--accent-light);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.quick-action-btn svg {
+  color: var(--accent-light);
+  flex-shrink: 0;
+}
+
 select.input { cursor: pointer; -webkit-appearance: none; appearance: none; }
 textarea.input { resize: vertical; min-height: 90px; }
 

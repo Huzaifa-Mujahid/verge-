@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Filter, Download, Loader2, ArrowUpRight, Building2, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Filter, Download, Loader2, ArrowUpRight, Building2, X, CreditCard } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 const STATUS_BADGE = {
   Active:     'badge-emerald',
@@ -17,17 +18,52 @@ const av = (name) => { const i = (name?.charCodeAt(0) || 0) % 5; return [AVATAR_
 
 /* ── Add Client Modal ─────────────────────────────────────────── */
 const AddClientModal = ({ onClose, onSaved }) => {
-  const [form, setForm] = useState({ full_name: '', email: '', phone: '', company: '', status: 'Active' });
+  const { user, isAdmin, isManager, role } = useAuth();
+  const isCS = role === 'Customer Success Manager';
+  const canHandlePayment = isAdmin || isManager || isCS;
+
+  const [form, setForm] = useState({ 
+    full_name: '', 
+    email: '', 
+    phone: '', 
+    company: '', 
+    status: 'Active', 
+    assigned_to: '',
+    payment_method: '',
+    card_number: ''
+  });
+  const [staffList, setStaffList] = useState([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
   const up = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    if (isAdmin || isManager) {
+      fetchStaff();
+    } else {
+      up('assigned_to', user.id);
+    }
+  }, []);
+
+  const fetchStaff = async () => {
+    const { data } = await supabase.from('user_roles').select('user_id, full_name, role');
+    setStaffList(data || []);
+    // Default to current user
+    if (data?.length > 0) {
+      up('assigned_to', user.id);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
     if (!form.full_name || !form.email) { setErr('Name and email are required.'); return; }
     setSaving(true); setErr(null);
     try {
-      const { error } = await supabase.from('clients').insert([{ ...form, health_score: 80 }]);
+      const { error } = await supabase.from('clients').insert([{ 
+        ...form, 
+        health_score: 80,
+        assigned_to: form.assigned_to || user.id
+      }]);
       if (error) throw error;
       onSaved();
     } catch (e) { setErr(e.message); } finally { setSaving(false); }
@@ -49,13 +85,55 @@ const AddClientModal = ({ onClose, onSaved }) => {
               <div><label className="label">Phone</label><input className="input" value={form.phone} onChange={e => up('phone', e.target.value)} placeholder="+1 (555) 000-0000" /></div>
               <div><label className="label">Company</label><input className="input" value={form.company} onChange={e => up('company', e.target.value)} placeholder="Acme Inc." /></div>
             </div>
-            <div><label className="label">Business Address</label><input className="input" value={form.address || ''} onChange={e => up('address', e.target.value)} placeholder="123 Business St, Suite 100" /></div>
+            
+            {(isAdmin || isManager) && (
+              <div>
+                <label className="label">Assign to Staff Member</label>
+                <select className="input" value={form.assigned_to} onChange={e => up('assigned_to', e.target.value)}>
+                  {staffList.map(s => (
+                    <option key={s.user_id} value={s.user_id}>
+                      {s.full_name} ({s.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="label">Status</label>
               <select className="input" value={form.status} onChange={e => up('status', e.target.value)}>
                 {['Active', 'Onboarding', 'At Risk', 'Churned'].map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
+
+            {canHandlePayment && (
+              <div style={{ padding: 16, background: 'rgba(99,102,241,0.03)', border: '1px solid rgba(99,102,241,0.1)', borderRadius: 12, marginTop: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent-light)', textTransform: 'uppercase', marginBottom: 12 }}>Payment Information</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label className="label">Method</label>
+                    <select className="input" value={form.payment_method} onChange={e => up('payment_method', e.target.value)}>
+                      <option value="">Select Method...</option>
+                      <option value="Visa">Visa Card</option>
+                      <option value="MasterCard">MasterCard</option>
+                      <option value="AMEX">American Express</option>
+                      <option value="Discover">Discover</option>
+                      <option value="PayPal">PayPal</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Card Number</label>
+                    <input 
+                      className="input" 
+                      type="text"
+                      placeholder="XXXX XXXX XXXX XXXX"
+                      value={form.card_number}
+                      onChange={e => up('card_number', e.target.value.replace(/\D/g, '').slice(0, 16))}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </form>
         </div>
         <div className="modal-footer">
@@ -77,8 +155,19 @@ const Clients = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  useEffect(() => { fetchClients(); }, []);
+  useEffect(() => {
+    fetchClients();
+
+    // Handle Quick Action
+    const params = new URLSearchParams(location.search);
+    if (params.get('new') === 'true') {
+      setShowModal(true);
+      // Clear the param from URL
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search]);
 
   const fetchClients = async () => {
     setLoading(true);
@@ -144,6 +233,7 @@ const Clients = () => {
                 <tr>
                   <th>Client</th>
                   <th>Company</th>
+                  <th>Payment</th>
                   <th>Status</th>
                   <th>Health Score</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
@@ -160,20 +250,30 @@ const Clients = () => {
                         onClick={() => navigate(`/clients/${client.id}`)}>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div className="avatar avatar-md" style={{ background: abg, color: afg }}>
-                              {client.full_name?.[0]?.toUpperCase() || 'U'}
-                            </div>
+                            <div className="avatar" style={{ background: abg, color: afg, width: 36, height: 36, fontSize: 13, borderRadius: 10 }}>{client.full_name[0]}</div>
                             <div>
-                              <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{client.full_name}</p>
-                              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{client.email}</p>
+                              <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>{client.full_name}</p>
+                              <p style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{client.email}</p>
                             </div>
                           </div>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Building2 size={13} style={{ color: 'var(--text-muted)' }} />
-                            {client.company || '—'}
+                            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{client.company || '—'}</span>
                           </div>
+                        </td>
+                        <td>
+                          {client.payment_method ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <CreditCard size={12} style={{ color: 'var(--accent-light)' }} /> {client.payment_method}
+                              </p>
+                              <p style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
+                                {isAdmin ? client.card_number : `**** **** **** ${client.card_number?.slice(-4)}`}
+                              </p>
+                            </div>
+                          ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
                         </td>
                         <td>
                           <span className={`badge ${STATUS_BADGE[client.status] || 'badge-slate'}`}>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import MainLayout from './layouts/MainLayout';
 import Login from './pages/Login';
@@ -12,11 +13,21 @@ import Payments from './pages/Payments';
 import Interactions from './pages/Interactions';
 import Reports from './pages/Reports';
 import ClientDetail from './pages/ClientDetail';
+import Staff from './pages/Staff';
+import Tasks from './pages/Tasks';
 
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, role } = useAuth();
   
-  if (loading) return null;
+  if (loading) return (
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#07090f', color: 'white' }}>
+      <div style={{ textAlign: 'center' }}>
+        <Loader2 className="animate-spin" style={{ margin: '0 auto 16px', color: '#6366f1' }} size={32} />
+        <p style={{ fontSize: 14, color: '#4b5a72' }}>Initializing ClientFlow...</p>
+      </div>
+    </div>
+  );
+  
   if (!user) return <Navigate to="/login" />;
   
   return <MainLayout>{children}</MainLayout>;
@@ -69,6 +80,18 @@ function App() {
           <Route path="/reports" element={
             <ProtectedRoute>
               <Reports />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/staff" element={
+            <ProtectedRoute>
+              <Staff />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/tasks" element={
+            <ProtectedRoute>
+              <Tasks />
             </ProtectedRoute>
           } />
 

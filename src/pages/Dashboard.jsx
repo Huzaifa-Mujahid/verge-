@@ -6,6 +6,7 @@ import {
   TrendingUp, Calendar, MessageSquare, ChevronRight,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, BarChart, Bar,
@@ -49,35 +50,84 @@ const QuickAction = ({ icon: Icon, label, desc, path, color = 'indigo' }) => {
 };
 
 const Dashboard = () => {
+  const { user, role, isAdmin: authIsAdmin, isManager: authIsManager } = useAuth();
+  const isAdmin = authIsAdmin;
+  const isManager = authIsManager;
+  const isStaff = !isAdmin && !isManager;
+  
   const [stats, setStats] = useState({ clients: 0, projects: 0, revenue: 0, overdue: 0 });
   const [projData, setProjData] = useState([]);
   const [revChartData, setRevChartData] = useState([]);
+  const [myTasks, setMyTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => { 
+    if (user && role !== null) {
+      fetchStats(); 
+    }
+  }, [user, role]);
 
   const fetchStats = async () => {
+    if (!user) return;
     try {
+      setLoading(true);
       const nowStr = new Date().toISOString();
-      const [{ count: c }, { count: p }, { data: revData }, { data: projRows }, { count: overdueCount }] = await Promise.all([
-        supabase.from('clients').select('*', { count: 'exact', head: true }),
-        supabase.from('projects').select('*', { count: 'exact', head: true }),
-        supabase.from('payments').select('amount, payment_date').eq('is_paid', true),
-        supabase.from('projects').select('status'),
-        supabase.from('payments').select('*', { count: 'exact', head: true }).eq('is_paid', false).lt('due_date', nowStr)
+
+      // Base queries
+      let clientsQuery = supabase.from('clients').select('*', { count: 'exact', head: true });
+      let projectsQuery = supabase.from('projects').select('*', { count: 'exact', head: true });
+      let paymentsQuery = supabase.from('payments').select('amount, payment_date, is_paid, due_date').eq('is_paid', true);
+      let overdueQuery = supabase.from('payments').select('*', { count: 'exact', head: true }).eq('is_paid', false).lt('due_date', nowStr);
+      let tasksQuery = supabase.from('tasks').select('*, clients(full_name)').order('due_date', { ascending: true }).limit(5);
+
+      // Filtering for staff
+      if (isStaff) {
+        clientsQuery = clientsQuery.eq('assigned_to', user.id);
+        projectsQuery = projectsQuery.eq('assigned_to', user.id);
+        tasksQuery = tasksQuery.eq('assigned_to', user.id);
+        
+        const { data: staffProjIds } = await supabase.from('projects').select('id').eq('assigned_to', user.id);
+        const pIds = staffProjIds?.map(p => p.id) || [];
+        if (pIds.length > 0) {
+          paymentsQuery = paymentsQuery.in('project_id', pIds);
+          overdueQuery = overdueQuery.in('project_id', pIds);
+        } else {
+          paymentsQuery = paymentsQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+          overdueQuery = overdueQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+        }
+      }
+
+      const [resC, resP, resRev, resProj, resOver, resTasks] = await Promise.all([
+        clientsQuery,
+        projectsQuery,
+        paymentsQuery,
+        supabase.from('projects').select('status').filter(isStaff ? 'assigned_to' : 'id', isStaff ? 'eq' : 'neq', isStaff ? user.id : '00000000-0000-0000-0000-000000000000'),
+        overdueQuery,
+        tasksQuery
       ]);
-      const revenue = revData?.reduce((s, x) => s + (x.amount || 0), 0) || 0;
+
+      const c = resC?.count || 0;
+      const p = resP?.count || 0;
+      const revData = resRev?.data || [];
+      const projRows = resProj?.data || [];
+      const overdueCount = resOver?.count || 0;
+      const taskRows = resTasks?.data || [];
+
+      const revenue = revData.reduce((s, x) => s + (x.amount || 0), 0);
       const counts = { Pending: 0, 'In Progress': 0, Completed: 0, Cancelled: 0 };
-      projRows?.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+      projRows.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+      
       setProjData([
         { name: 'Pending', value: counts['Pending'], color: '#f59e0b' },
         { name: 'In Progress', value: counts['In Progress'], color: '#6366f1' },
         { name: 'Completed', value: counts['Completed'], color: '#10b981' },
         { name: 'Cancelled', value: counts['Cancelled'], color: '#f43f5e' },
       ]);
-      setStats({ clients: c || 0, projects: p || 0, revenue, overdue: overdueCount || 0 });
+      setStats({ clients: c, projects: p, revenue, overdue: overdueCount });
+      setMyTasks(taskRows);
 
-      // Build real revenue chart data for last 6 months
+      // Build revenue chart data
       const monthsStr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const curMonth = new Date().getMonth();
       const chartMap = {};
@@ -87,14 +137,18 @@ const Dashboard = () => {
         chartMap[monthsStr[m]] = 0;
       }
 
-      revData?.forEach(r => {
+      revData.forEach(r => {
         if (r.payment_date) {
           const mName = monthsStr[new Date(r.payment_date).getMonth()];
           if (chartMap[mName] !== undefined) chartMap[mName] += (r.amount || 0);
         }
       });
       setRevChartData(Object.keys(chartMap).map(k => ({ month: k, revenue: chartMap[k] })));
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error('FetchStats Error:', err); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   return (
@@ -184,13 +238,53 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 24 }}>
-        <p className="section-title" style={{ marginBottom: 14 }}>Quick Actions</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
-          <QuickAction icon={Users}         label="Manage Clients"      desc="View and edit your client database"   path="/clients"      color="indigo" />
-          <QuickAction icon={Briefcase}     label="Manage Projects"     desc="Track project status and budgets"     path="/projects"     color="blue" />
-          <QuickAction icon={Calendar}      label="Schedule Meeting"    desc="Book and manage appointments"         path="/meetings"     color="emerald" />
-          <QuickAction icon={MessageSquare} label="Log Interaction"     desc="Record client communications"         path="/interactions" color="amber" />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, marginBottom: 16 }} className="dash-grid">
+        <div className="card" style={{ padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <p className="section-title">My Assigned Tasks</p>
+            <button onClick={() => navigate('/projects')} className="text-xs text-indigo-400 font-semibold hover:underline">View All</button>
+          </div>
+          
+          <div className="overflow-hidden">
+            {myTasks.length === 0 ? (
+              <div className="empty-state" style={{ padding: '20px 0' }}>
+                <p className="empty-desc">No tasks assigned to you yet.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {myTasks.map(task => (
+                  <div key={task.id} style={{ 
+                    display: 'flex', alignItems: 'center', gap: 12, 
+                    padding: '12px 14px', borderRadius: 10, 
+                    background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' 
+                  }}>
+                    <div style={{ 
+                      width: 8, height: 8, borderRadius: '50%', 
+                      background: task.status === 'Completed' ? '#10b981' : task.status === 'Pending' ? '#f59e0b' : '#6366f1' 
+                    }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{task.clients?.full_name || 'No Client'}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No Date'}</p>
+                      <p style={{ fontSize: 10, color: 'var(--text-muted)' }}>{task.duration || 'N/A'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 24 }}>
+          <p className="section-title" style={{ marginBottom: 14 }}>Quick Actions</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <QuickAction icon={Users}         label="Clients"      desc="View your database"   path="/clients"      color="indigo" />
+            <QuickAction icon={Briefcase}     label="Projects"     desc="Track status"     path="/projects"     color="blue" />
+            <QuickAction icon={Calendar}      label="Meetings"    desc="Book appointments"         path="/meetings"     color="emerald" />
+            <QuickAction icon={MessageSquare} label="Log Interaction"     desc="Record comms"         path="/interactions" color="amber" />
+          </div>
         </div>
       </div>
 

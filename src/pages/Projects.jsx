@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Filter, LayoutGrid, Table as TableIcon, X, Loader2, Calendar, DollarSign, ChevronRight, Briefcase } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 const STATUS_STYLES = {
   Pending:     'badge-amber',
@@ -16,8 +17,23 @@ const STATUSES = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
 const EMPTY_FORM = { id: null, client_id: '', title: '', description: '', budget: '', status: 'Pending', start_date: '', end_date: '' };
 
 /* ── Project Modal ─────────────────────────────────────────────── */
-const ProjectModal = ({ formData, setFormData, clients, saving, formError, onSave, onDelete, onClose, isEdit }) => (
-  <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+const ProjectModal = ({ formData, setFormData, clients, saving, formError, onSave, onDelete, onClose, isEdit }) => {
+  const { user, isAdmin, isManager } = useAuth();
+  const [staffList, setStaffList] = useState([]);
+
+  useEffect(() => {
+    if (isAdmin || isManager) {
+      fetchStaff();
+    }
+  }, []);
+
+  const fetchStaff = async () => {
+    const { data } = await supabase.from('user_roles').select('user_id, full_name, role');
+    setStaffList(data || []);
+  };
+
+  return (
+    <div className="modal-overlay">
     <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }} className="modal-box">
       <div className="modal-header">
         <span className="modal-title">{isEdit ? 'Edit Project' : 'New Project'}</span>
@@ -59,11 +75,18 @@ const ProjectModal = ({ formData, setFormData, clients, saving, formError, onSav
               <input className="input" type="number" min="0" step="0.01" value={formData.budget} onChange={e => setFormData(f => ({ ...f, budget: e.target.value }))} placeholder="0.00" />
             </div>
             <div>
-              <label className="label">Status</label>
-              <select className="input" value={formData.status} onChange={e => setFormData(f => ({ ...f, status: e.target.value }))}>
-                {STATUSES.map(s => <option key={s}>{s}</option>)}
+              <label className="label">Assigned Staff</label>
+              <select className="input" value={formData.assigned_to || ''} onChange={e => setFormData(f => ({ ...f, assigned_to: e.target.value }))}>
+                <option value="">Select Staff...</option>
+                {staffList.map(s => <option key={s.user_id} value={s.user_id}>{s.full_name} ({s.role})</option>)}
               </select>
             </div>
+          </div>
+          <div>
+            <label className="label">Status</label>
+            <select className="input" value={formData.status} onChange={e => setFormData(f => ({ ...f, status: e.target.value }))}>
+              {STATUSES.map(s => <option key={s}>{s}</option>)}
+            </select>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
@@ -89,9 +112,11 @@ const ProjectModal = ({ formData, setFormData, clients, saving, formError, onSav
     </motion.div>
   </div>
 );
+};
 
 /* ── Projects Page ─────────────────────────────────────────────── */
 const Projects = () => {
+  const { user } = useAuth();
   const location = useLocation();
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
@@ -126,8 +151,8 @@ const Projects = () => {
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
-  const openAdd = () => { setFormData(EMPTY_FORM); setFormError(null); setIsEdit(false); setShowModal(true); };
-  const openEdit = (p) => { setFormData({ id: p.id, client_id: p.client_id, title: p.title, description: p.description || '', budget: p.budget || '', status: p.status, start_date: p.start_date?.slice(0, 10) || '', end_date: p.end_date?.slice(0, 10) || '', sales_agent: p.sales_agent || '', closer: p.closer || '' }); setFormError(null); setIsEdit(true); setShowModal(true); };
+  const openAdd = () => { setFormData({ ...EMPTY_FORM, assigned_to: user.id }); setFormError(null); setIsEdit(false); setShowModal(true); };
+  const openEdit = (p) => { setFormData({ id: p.id, client_id: p.client_id, title: p.title, description: p.description || '', budget: p.budget || '', status: p.status, start_date: p.start_date?.slice(0, 10) || '', end_date: p.end_date?.slice(0, 10) || '', sales_agent: p.sales_agent || '', closer: p.closer || '', assigned_to: p.assigned_to || '' }); setFormError(null); setIsEdit(true); setShowModal(true); };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -135,7 +160,7 @@ const Projects = () => {
     if (!formData.title) { setFormError('Project title is required.'); return; }
     setSaving(true); setFormError(null);
     try {
-      const payload = { client_id: formData.client_id, title: formData.title, description: formData.description, budget: parseFloat(formData.budget) || 0, status: formData.status, start_date: formData.start_date || null, end_date: formData.end_date || null, sales_agent: formData.sales_agent || null, closer: formData.closer || null };
+      const payload = { client_id: formData.client_id, title: formData.title, description: formData.description, budget: parseFloat(formData.budget) || 0, status: formData.status, start_date: formData.start_date || null, end_date: formData.end_date || null, sales_agent: formData.sales_agent || null, closer: formData.closer || null, assigned_to: formData.assigned_to || user.id };
       if (isEdit) { const { error } = await supabase.from('projects').update(payload).eq('id', formData.id); if (error) throw error; }
       else { const { error } = await supabase.from('projects').insert([payload]); if (error) throw error; }
       setShowModal(false); fetchData();
